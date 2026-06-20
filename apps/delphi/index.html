@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aether Tracker</title>
+    <link rel="stylesheet" href="index.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <header class="glass-panel">
+            <div class="logo">
+                <span class="logo-icon">▲</span>
+                <h1>Aether Tracker</h1>
+            </div>
+            <nav>
+                <button class="btn btn-primary" id="btn-publish">+ Publish Torrent</button>
+            </nav>
+        </header>
+
+        <main>
+            <div class="search-bar glass-panel">
+                <input type="text" id="search-input" placeholder="Search for torrents...">
+            </div>
+
+            <div class="torrent-list" id="torrent-list">
+                <div class="loading">Loading decentralized feed...</div>
+            </div>
+        </main>
+
+        <!-- Publish Modal -->
+        <div class="modal-overlay hidden" id="publish-modal">
+            <div class="modal glass-panel">
+                <h2>Publish Torrent</h2>
+                <form id="publish-form">
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" id="pub-title" required placeholder="Ubuntu 22.04 LTS">
+                    </div>
+                    <div class="form-group">
+                        <label>Magnet Link</label>
+                        <input type="text" id="pub-magnet" required placeholder="magnet:?xt=urn:btih:...">
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea id="pub-desc" placeholder="Optional description..."></textarea>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" id="btn-cancel">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Publish to Aether</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
