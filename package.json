@@ -2,25 +2,20 @@
   "name": "aether",
   "version": "0.0.1",
   "private": true,
-  "description": "Local prototype for encrypted, signed, owner-controlled content capsules.",
+  "description": "Local-first runtime and distribution layer for signed applications and public media.",
   "type": "commonjs",
   "scripts": {
-    "test:go": "set GOPATH=C:\\Users\\adity\\go&& cd src/daemon-go && go test -v",
-    "test": "npm run test:go",
-    "cli": "node src/cli/index.js",
-    "gateway": "node src/gateway.js"
+    "test": "npm run test:go && npm run test:sdk",
+    "test:go": "cd src/daemon-go && go test ./...",
+    "test:sdk": "npm test --prefix packages/sdk",
+    "test:docs": "npm run build --prefix aether-docs"
   },
-  "main": "patch-trust.js",
   "directories": {
     "doc": "docs",
     "example": "examples"
   },
   "keywords": [],
-  "author": "",
+  "author": "Aditya Malik",
   "license": "ISC",
-  "devDependencies": {
-    "axios": "^1.16.1",
-    "jest": "^30.4.2",
-    "supertest": "^7.2.2"
-  }
+  "devDependencies": {}
 }
