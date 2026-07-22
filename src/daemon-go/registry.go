@@ -220,8 +220,7 @@ func InitializeLocalRegistryClaim(username string, keyId string) error {
 
 func BroadcastRegistryMessage(data []byte) {
 	if GlobalPubSub != nil {
-		// In a real network, we'd use a dedicated PubSub topic like "aether-registry"
-		// For MVP, we can reuse the existing broadcast but wrap it
+		// Compatibility path for the legacy global topic.
 		BroadcastMessage(map[string]interface{}{
 			"type": "REGISTRY_SYNC",
 			"data": string(data),
