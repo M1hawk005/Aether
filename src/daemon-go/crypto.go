@@ -67,16 +67,11 @@ func LoadPrivateKey(path string) (ed25519.PrivateKey, error) {
 		return nil, err
 	}
 
-	// If the file is smaller than 100 bytes, it might be an old unencrypted key
-	// A valid encrypted key will be at least NonceSize + TagSize + Payload
-	// For backward compatibility and our current test keys, try to parse it raw first,
-	// if it fails or if we strictly want encryption, we decrypt.
-	// But since user requested encryption, let's assume it's encrypted if MasterKey is set.
+	// Legacy key files may be unencrypted. Keep the fallback until the key migration is complete.
 	var decryptedBytes []byte
 	if len(MasterKey) == 32 {
 		decryptedBytes, err = DecryptBytes(bytes)
 		if err != nil {
-			// Fallback for unencrypted legacy test keys
 			decryptedBytes = bytes
 		}
 	} else {

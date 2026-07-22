@@ -3,17 +3,20 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
-  title: 'Aether Protocol',
-  tagline: 'Decentralized. Secure. Uncensorable.',
-  favicon: 'img/favicon.ico',
+  title: 'Aether',
+  tagline: 'Architecture and development documentation',
 
-  url: 'https://aether-protocol.io',
-  baseUrl: '/',
-  organizationName: 'aether-network', 
-  projectName: 'aether-docs',
+  url: 'https://m1hawk005.github.io',
+  baseUrl: '/Aether/',
+  organizationName: 'M1hawk005',
+  projectName: 'Aether',
 
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
+  },
 
   i18n: {
     defaultLocale: 'en',
@@ -25,10 +28,11 @@ const config: Config = {
       'classic',
       {
         docs: {
+          path: '../docs',
           sidebarPath: './sidebars.ts',
-          routeBasePath: '/', // Serve the docs at the site's root
+          routeBasePath: '/',
         },
-        blog: false, // Disable blog for now
+        blog: false,
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -42,22 +46,17 @@ const config: Config = {
       disableSwitch: false,
       respectPrefersColorScheme: true,
     },
-    image: 'img/docusaurus-social-card.jpg',
     navbar: {
-      title: 'Aether Protocol',
-      logo: {
-        alt: 'Aether Logo',
-        src: 'img/logo.svg',
-      },
+      title: 'Aether',
       items: [
         {
           type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
+          sidebarId: 'docsSidebar',
           position: 'left',
           label: 'Documentation',
         },
         {
-          href: 'https://github.com/aether-network/aether',
+          href: 'https://github.com/M1hawk005/Aether',
           label: 'GitHub',
           position: 'right',
         },
@@ -65,31 +64,8 @@ const config: Config = {
     },
     footer: {
       style: 'dark',
-      links: [
-        {
-          title: 'Docs',
-          items: [
-            {
-              label: 'Quick Start',
-              to: '/quick-start',
-            },
-          ],
-        },
-        {
-          title: 'Community',
-          items: [
-            {
-              label: 'Discord',
-              href: 'https://discordapp.com/invite/aether',
-            },
-            {
-              label: 'Twitter',
-              href: 'https://twitter.com/aether_protocol',
-            },
-          ],
-        },
-      ],
-      copyright: `Copyright © ${new Date().getFullYear()} Aether Network. Built with Docusaurus.`,
+      links: [],
+      copyright: `Copyright © ${new Date().getFullYear()} Aether contributors.`,
     },
     prism: {
       theme: prismThemes.github,

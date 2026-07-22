@@ -278,17 +278,16 @@ func HandleFetch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Cache it locally so we can seed it!
+		// Retain the fetched chunk for the legacy seeding path.
 		capsDir := PathInAether("global_cache", "capsules", SafeName(capsuleId))
 		EnsureDir(capsDir)
 		chunkHash := capsuleId + "_chunk"
 
-		// Write a dummy manifest so WANT_CAPSULE can serve it
+		// The legacy responder expects a manifest containing the cached chunk key.
 		WriteJson(filepath.Join(capsDir, "manifest.json"), map[string]interface{}{
 			"chunks": []map[string]string{{"hash": chunkHash}},
 		})
 
-		// Write the compressed chunk bytes
 		chunkDir := PathInAether("global_cache", "chunks")
 		EnsureDir(chunkDir)
 		WriteJson(filepath.Join(chunkDir, SafeName(chunkHash)+".json"), map[string]interface{}{
@@ -479,7 +478,7 @@ func HandleAnnounce(w http.ResponseWriter, r *http.Request) {
 
 	peerIdStr := q.Get("peer_id")
 	portStr := q.Get("port")
-	
+
 	port, _ := strconv.Atoi(portStr)
 
 	ip := "127.0.0.1"
@@ -514,7 +513,7 @@ func HandleAnnounce(w http.ResponseWriter, r *http.Request) {
 	}
 
 	peers := GetBTPeers(infoHashHex)
-	
+
 	w.Header().Set("Content-Type", "text/plain")
 	w.WriteHeader(200)
 
@@ -523,7 +522,7 @@ func HandleAnnounce(w http.ResponseWriter, r *http.Request) {
 	for _, p := range peers {
 		sb.WriteString("d")
 		sb.WriteString(fmt.Sprintf("2:ip%d:%s", len(p.IP), p.IP))
-		
+
 		pid := p.PeerID
 		if len(pid) > 20 {
 			pid = pid[:20]
@@ -533,7 +532,7 @@ func HandleAnnounce(w http.ResponseWriter, r *http.Request) {
 		sb.WriteString("e")
 	}
 	sb.WriteString("ee")
-	
+
 	w.Write([]byte(sb.String()))
 }
 

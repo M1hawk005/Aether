@@ -42,10 +42,9 @@ var (
 func InitLibp2p(ctx context.Context, listenPort int) error {
 	var err error
 
-	// 1. Initialize Host with NAT traversal (UPnP/AutoNAT)
 	GlobalHost, err = libp2p.New(
 		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", listenPort)),
-		libp2p.NATPortMap(), // Automatically attempt to open port in home routers (UPnP)
+		libp2p.NATPortMap(),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create libp2p host: %w", err)
@@ -59,34 +58,26 @@ func InitLibp2p(ctx context.Context, listenPort int) error {
 	}
 	log.Printf("===================================================================")
 
-	// 2. Initialize Kademlia DHT
 	GlobalDHT, err = dht.New(ctx, GlobalHost, dht.Mode(dht.ModeServer))
 	if err != nil {
 		return fmt.Errorf("failed to create DHT: %w", err)
 	}
 
-	// 2.5 Bootstrap Peers Connection
 	bootstrapEnv := os.Getenv("AETHER_BOOTSTRAP_PEERS")
 	var bootstrapPeers []string
-	if bootstrapEnv == "" {
-		// Mock local address for local testing
-		bootstrapPeers = []string{"/ip4/127.0.0.1/tcp/6001/p2p/QmPlaceholderNodeID12345"}
-	} else {
+	if bootstrapEnv != "" {
 		bootstrapPeers = strings.Split(bootstrapEnv, ",")
 	}
 	connectToBootstrapPeers(ctx, bootstrapPeers)
 
-	// Bootstrap the DHT (connect to default bootstrap peers for a real net, but we are local prototyping)
 	if err = GlobalDHT.Bootstrap(ctx); err != nil {
 		log.Printf("DHT Bootstrap failed: %v", err)
 	}
 
-	// 3. Setup Discovery
 	routingDiscovery := routing.NewRoutingDiscovery(GlobalDHT)
 	util.Advertise(ctx, routingDiscovery, TopicName)
 
 	go func() {
-		// Periodically look for peers
 		for {
 			peerChan, err := routingDiscovery.FindPeers(ctx, TopicName)
 			if err != nil {
@@ -110,7 +101,6 @@ func InitLibp2p(ctx context.Context, listenPort int) error {
 		}
 	}()
 
-	// 4. Initialize GossipSub
 	GlobalPubSub, err = pubsub.NewGossipSub(ctx, GlobalHost)
 	if err != nil {
 		return fmt.Errorf("failed to create pubsub: %w", err)
@@ -126,7 +116,6 @@ func InitLibp2p(ctx context.Context, listenPort int) error {
 		return fmt.Errorf("failed to subscribe to topic: %w", err)
 	}
 
-	// Message handler loop
 	go func() {
 		for {
 			msg, err := sub.Next(ctx)
@@ -135,7 +124,7 @@ func InitLibp2p(ctx context.Context, listenPort int) error {
 				return
 			}
 			if msg.ReceivedFrom == GlobalHost.ID() {
-				continue // Ignore own messages
+				continue
 			}
 
 			handleIncomingNetworkMessage(msg.Data, msg.ReceivedFrom)
@@ -214,14 +203,9 @@ func handleIncomingNetworkMessage(data []byte, from peer.ID) {
 				ch, exists := PendingFetches[capsuleId]
 				FetchMutex.Unlock()
 				if exists {
-					// Decode data and trigger channel
-					// (In a real implementation we would verify the hash here before crediting)
+					// AET-012: validate the expected content hash before accepting this payload.
 					b, err := base64.StdEncoding.DecodeString(b64Data)
 					if err == nil {
-						if sender, ok := msg["sender"].(string); ok {
-							RecordTransfer(sender, len(b))
-						}
-						// Non-blocking send
 						select {
 						case ch <- b:
 						default:

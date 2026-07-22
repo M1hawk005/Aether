@@ -1,80 +1,234 @@
-# Aether Protocol: Architectural Reference & Technical Decisions
-
-This document details the comprehensive architectural, technical, and design decisions made during the development of the Aether protocol and its ecosystem.
-
+---
+title: Architecture
+slug: /
+sidebar_position: 1
 ---
 
-## 1. Core Philosophy
-The guiding principle of Aether is **True Decentralization from Day 1**. 
-- **No Central Bottlenecks:** There are no master nodes, hardcoded genesis authorities, or central databases.
-- **Thin Clients:** The UI and SDK are kept intentionally "dumb" and thin. All heavy lifting, cryptographic verification, data deduplication, and P2P aggregation are handled by the local Go daemon.
-- **Local-First Reputation:** Reputation and trust are not global scores managed by a blockchain, but rather subjective, localized metrics based on actual data seeding.
+# Aether Architectural Reference
 
-## 2. System Components
+**Status:** Accepted target architecture
 
-### 2.1 The Go Daemon (`daemon-go`)
-The heart of the Aether protocol. It runs a local HTTP server (`localhost:5000`) for the client apps, and a LibP2P listener for the global network.
-- **Language:** Go (chosen for concurrency, speed, and excellent LibP2P support).
-- **Networking:** `go-libp2p`. Uses Kademlia DHT for peer routing and discovery, and `GossipSub` for pub/sub message broadcasting.
-- **Concurrency:** Thread-safe state maps utilizing `sync.Mutex` (`PendingFetches`, `PendingResolves`, `PendingAvailability`) handle asynchronous P2P pubsub events and map them back to synchronous HTTP requests.
-- **Storage Strategy:** Uses a file-system based approach for MVP (`peers/` and `global_cache/` directories).
-- **Data Compression:** Payloads are **Brotli-compressed** before network transmission to save bandwidth, and base64 encoded for JSON-safe transport.
+**Implementation status:** Migration from the existing Go/libp2p capsule prototype
 
-### 2.2 The Node.js SDK (`packages/sdk`)
-A strictly typed TypeScript wrapper that allows web and Node applications to interface with the local Go daemon.
-- **Resilience:** Integrates `axios-retry` with exponential backoff.
-- **Selective Retries:** Retries are strictly limited to `5xx` internal server errors (daemon crash/restart) and `ECONNREFUSED` (network drops). It **does not** retry `404` or `408` errors resulting from P2P fetch timeouts, as missing network data shouldn't freeze the UI.
-- **Test Coverage:** Achieved 100% test coverage using `jest` and `axios-mock-adapter`, mocking out the daemon responses to ensure edge cases are handled elegantly.
+**First application:** Aether Index
 
-### 2.3 The Gateway UI (`aether-gateway`)
-A desktop application that acts as the primary user interface to the network.
-- **Framework:** Built with **Wails** (Go backend + React/Vite frontend). Allows the UI to compile to a native desktop executable while retaining modern web technologies.
-- **Aesthetics:** Minimalistic, "CTOS Hacker" aesthetic. Translucent glassmorphism was proposed but rejected in favor of a sleek, bare-bones, terminal-inspired style.
-- **Integration:** Bypasses raw HTTP calls in favor of importing the local `aether-sdk`, inheriting all robustness and type-safety mechanisms.
+## 1. Product definition
 
----
+Aether is an open, local-first runtime and distribution layer for applications and public media. Users control their identity, subscriptions, installed applications, local catalog, and provider choices. Publishers receive signed releases and torrent-backed distribution without making a single catalog, frontend, or hosting company canonical.
 
-## 3. Key Architectural Decisions
+Aether is a protocol-composition project: it reuses mature infrastructure instead of replacing every transport.
 
-### 3.1 Cryptographic Identity & Envelopes
-- **Keys:** Ed25519 for high-speed, secure digital signatures.
-- **Encryption:** AES-GCM for payload encryption.
-- **Capsule Structure:** Data is packaged into "Capsules". Each Capsule contains a `manifest.json` and a series of `chunks`. 
-- **Envelopes:** The header metadata (`header.json`) is cryptographically signed by the publisher. The ID of a capsule is the hash of its Envelope. This ensures immutability; if the data changes, the hash changes.
+### Goals
 
-### 3.2 Decentralized Name Registry ("First-Seen" Consensus)
-- **Problem:** How to map human-readable usernames (e.g., `@alice`) to Ed25519 public keys without a centralized DNS server or expensive blockchain.
-- **Solution:** A timestamp-based "First-Seen" consensus. When resolving a username, the network broadcasts a `WANT_USER_CAPSULES` packet. The daemon receives all signed claims for that username. If multiple users claim the same name, the cryptographic signature with the oldest valid timestamp wins. 
-- **Tombstones:** To release a username, users publish a Cryptographic Tombstone. The daemon checks for this tombstone and frees the alias for the next user.
+- Interoperate with the existing BitTorrent ecosystem.
+- Make application releases and public content immutable and independently verifiable.
+- Keep identities and mutable records portable across providers.
+- Let users choose catalog, ranking, moderation, availability, and compute providers.
+- Provide fast local search and useful offline behavior.
+- Run downloaded applications behind an explicit capability boundary.
+- Use conventional infrastructure when it improves reliability without making it canonical.
 
-### 3.3 Server-Side P2P Deduplication
-- **Problem:** In a GossipSub network, resolving `@alice` might yield 50 identical responses from 50 different peers. Sending an array of 50 identical JSON objects over HTTP to the UI is a massive waste of IPC bandwidth and memory.
-- **Solution (The "Thin Client" philosophy):** Deduplication happens entirely in the Go daemon. The `/api/resolve` endpoint opens a 3-second context window, aggregates all incoming capsules into a map keyed by their cryptographic `signature`, and flattens the map into a unique array before sending it to the SDK. 
+### Non-goals
 
-### 3.4 Subjective Proof-of-Storage (Reputation)
-- **Problem:** Gamifiable, global reputation scores lead to botnets and centralization.
-- **Solution:** Reputation is local and earned. A node's `/api/reputation` scoreboard simply measures how many bytes of data each peer has verifiably seeded on its behalf. When a node fetches a chunk from a peer, it adds the byte size to that peer's local score. 
-- **UX Implementation:** Instead of showing raw numbers (e.g., "Score: 10,432"), the Gateway translates these scores into qualitative badges and leaderboard tiers, encouraging organic, reciprocal seeding.
+- Replacing every internet backend.
+- Building a custom BitTorrent tracker or piece-exchange protocol.
+- Storing full social records or search indexes in the BitTorrent DHT.
+- Maintaining one global feed, username registry, reputation score, or moderation policy.
+- Guaranteeing availability without seeders or an availability agreement.
+- Treating torrent-delivered JavaScript as trusted code.
 
-### 3.5 Global Caching & Swarm Health
-- **The Seeding Fix:** When a user fetches a capsule via `HandleFetch`, the daemon automatically decompresses the brotli chunks, serves the raw data to the UI, and simultaneously writes the compressed chunks to the `.aether/global_cache/` directory.
-- **Swarm Availability:** When tracing a capsule, the daemon broadcasts a `CHECK_AVAILABILITY` ping. Peers checking their local `global_cache` reply, allowing the daemon to aggregate unique Peer IDs over a 2-second window and report an accurate "Global Seeds" count to the UI.
+## 2. Architectural principles
 
----
+1. **Reuse before invention.** Mainline DHT, PEX, standard trackers, web seeds, and mature torrent engines handle blobs.
+2. **Immutable bytes, mutable pointers.** Torrents contain releases and snapshots; small signed records identify current versions.
+3. **Canonical data is verifiable.** Providers may rank, omit, cache, or label records, but clients verify signatures and hashes.
+4. **Providers are useful but replaceable.** Hybrid services are allowed when changing provider does not lose canonical identity or content.
+5. **Local-first is a product feature.** Installed apps, catalogs, preferences, and retained content work offline where possible.
+6. **No global firehose.** Clients synchronize selected publisher, community, app, and moderation feeds.
+7. **Decentralization does not remove policy.** Catalogs curate, label providers assess, and clients enforce local rules.
 
-## 4. Phase 2 Scalability Architecture
+## 3. System overview
 
-To transition the Aether MVP into a production-ready, highly scalable global network, two major architectural shifts are required:
+```text
+Aether desktop client
+  +-- local daemon
+      +-- identity and signing
+      +-- signed-event store and verifier
+      +-- catalog sync and local search
+      +-- trust, moderation, and storage policy
+      +-- BitTorrent backend
+      +-- isolated application gateway
+      +-- provider adapters
 
-### 4.1 Dual-Layer Storage (Metadata vs. Blobs)
-Currently, Aether writes chunks as raw `.json` files to the OS filesystem, which limits I/O scaling and large file support.
-- **Layer 1 (The "Hot" Metadata Layer):** We will implement **BadgerDB**, an insanely fast Log-Structured Merge (LSM) key-value store. BadgerDB will handle all highly dynamic, tiny data: Usernames, Signatures, Reputation Scores, and Short JSON Posts. This eliminates OS file-descriptor bottlenecks by flushing tiny metadata writes in large contiguous blocks.
-- **Layer 2 (The "Cold" Blob Layer):** To support massive static files (like 50GB videos), Aether will natively integrate **Bitswap / BitTorrent** block-exchange logic over our existing LibP2P stack. The raw bytes will be saved as contiguous files, while only their cryptographic hash (e.g., an IPFS CID) is stored inside the BadgerDB Capsule. The daemon will automatically route metadata requests to BadgerDB and stream massive blobs via Bitswap.
+Open infrastructure
+  +-- Mainline BitTorrent DHT
+  +-- BitTorrent swarms, PEX, trackers, and web seeds
+  +-- catalog and feed providers
+  +-- optional moderation, search, availability, relay, and compute providers
+```
 
-### 4.2 Subjective Web-of-Trust Graph
-Currently, Proof-of-Storage reputation is strictly **local**—your node only trusts peers it has personally fetched data from.
-- **The Upgrade:** To defend against Sybil attacks and spam without a centralized authority or global blockchain, nodes will securely gossip their local scoreboards to trusted peers.
-- **Mechanism:** If Node A trusts Node B (due to high local seeding scores), and Node B trusts Node C, Node A can safely assign a proxy-trust score to Node C before ever interacting with them. This creates a highly resilient, subjective "Web of Trust" graph capable of organically isolating malicious botnets.
+| Plane | Responsibility | Mechanism |
+| --- | --- | --- |
+| Content | Large immutable app and media bytes | BitTorrent v2/hybrid torrents |
+| Records | Small mutable publication and social history | Signed append-only events |
+| Services | Search, ranking, moderation, relays, compute, availability | Replaceable providers |
 
-### 4.3 Production Bootstrapping
-- **Bootstrap Nodes:** In production, the daemon will drop the localhost fallback and instead read an `AETHER_BOOTSTRAP_PEERS` environment variable to connect to dedicated, high-availability entry points (e.g., DigitalOcean/AWS droplets) to initialize the Kademlia DHT routing tables.
+## 4. Local daemon
+
+The Go daemon is the trusted boundary between applications, keys, storage, transports, and providers. The desktop UI and installed applications use a versioned local API rather than accessing keys or the torrent engine directly.
+
+Target services:
+
+- **Identity:** create, import, rotate, and use Ed25519 keys; private keys never enter application JavaScript.
+- **Events:** validate schemas, sequence numbers, predecessor links, signatures, sizes, and replay rules.
+- **Catalog:** synchronize selected feeds and maintain a local full-text index.
+- **Torrent:** create/add torrents, stream prioritized files, report availability, and seed within user policy.
+- **Policy:** apply feed trust, moderation labels, blocks, quotas, and application permissions.
+- **Application gateway:** serve verified bundles from isolated origins.
+- **Provider adapters:** communicate with selected catalogs, labels, search, relay, availability, and compute services.
+
+The first torrent integration may use qBittorrent's local Web API. The self-contained desktop target should embed libtorrent or another mature compatible engine. The backend is an implementation choice, not an Aether protocol dependency.
+
+## 5. Identity and signed events
+
+The canonical identity is a public key. Handles are optional aliases resolved through signed delegations, provider directories, DNS/WebFinger, or another non-consensus convenience layer.
+
+The legacy first-seen username mechanism is rejected: message arrival order and publisher timestamps cannot produce global consensus.
+
+```json
+{
+  "version": 1,
+  "type": "app_release",
+  "author": "ed25519:PUBLIC_KEY",
+  "sequence": 42,
+  "previous": "sha256:PREVIOUS_EVENT",
+  "createdAt": "2026-07-22T00:00:00Z",
+  "payload": {},
+  "signature": "BASE64_SIGNATURE"
+}
+```
+
+Before persistence, clients validate the schema and limits, canonical event ID, signature, author sequence and predecessor, replay status, and referenced identifiers. Initial event types are `profile_update`, `app_release`, `torrent_listing`, `feed_recommendation`, `moderation_label`, `key_rotation`, and `tombstone`. General social events follow after the release/catalog lifecycle is secure.
+
+## 6. Immutable content and BitTorrent
+
+BitTorrent distributes static web applications, media, releases, datasets, catalog snapshots, and event archives. A signed Aether record references its magnet URI, v2 root or hybrid infohashes, size, file count, metadata, and publisher.
+
+The torrent engine—not Aether's event network—handles piece selection and verification, resume state, Mainline DHT, PEX, trackers, NAT traversal, bandwidth limits, and seeding.
+
+Mainline BitTorrent DHT is distinct from the current libp2p Kademlia DHT. Aether must use a compatible torrent backend to join the existing network.
+
+Availability is a policy, not a consequence of content addressing. Sources may include publishers, consumer seeders, community pinning, paid seeders, trackers, HTTP web seeds, mirrors, and archives. Every source is verified against the same torrent hashes.
+
+## 7. Catalogs, feeds, and search
+
+A tracker finds peers for a known infohash. A catalog describes content. A search engine queries catalog metadata. **Aether Index is a decentralized catalog and local search application, not another tracker.**
+
+Each catalog is independently operated and signed. Clients subscribe to multiple catalogs and label providers, verify entries, deduplicate by event/content ID, apply local policy, and import accepted metadata into a local SQLite full-text index.
+
+Catalog history is distributed as torrent snapshots. A small signed mutable pointer identifies the current head. The initial implementation may use HTTPS provider APIs; BEP 44/46-style DHT mutable pointers can follow after interoperability and republishing behavior are proven.
+
+```text
+signed catalog head pointer
+  -> catalog-head torrent
+      -> recent signed listings
+      -> moderation labels
+      -> previous head
+      -> archive torrent references
+```
+
+The DHT must not store full listings or search indexes. Search is local or provider-assisted. BEP 51 may later help specialized indexers sample public infohashes, but it is not a search protocol and its output is untrusted.
+
+## 8. Hybrid provider model
+
+Providers intentionally improve latency, availability, safety, and computation without owning canonical identities or bytes. Provider types include catalog ingestion, search/ranking, moderation/malware labels, recommendations, guaranteed seeding/web seeds, notification relays, and transcoding.
+
+Clients can configure, disable, or replace providers. Responses claiming canonical facts contain or reference verifiable signed records. Subjective ranking results expose their provider provenance.
+
+## 9. Application runtime
+
+Torrent-delivered applications are untrusted. They do not share an origin with the daemon, gateway, other applications, or other identities' storage.
+
+Each release is served read-only from an origin derived from its verified app ID and release hash. Its manifest declares an entrypoint, publisher, version, content ID, limits, and requested capabilities.
+
+Example capability classes:
+
+- low-risk: `catalog.search`, `catalog.read`, `torrent.status`;
+- user-mediated: `torrent.open`, `content.pin`, `event.publish`;
+- sensitive: `identity.sign`, `filesystem.read`, `provider.configure`.
+
+Sensitive actions use a daemon-controlled confirmation surface showing the exact operation. The gateway enforces CSP, path normalization, MIME policy, resource limits, and network policy.
+
+## 10. Aether Index flow
+
+```text
+Publish
+  build static app
+  -> validate manifest
+  -> create and seed torrent
+  -> sign app_release
+  -> submit to selected catalogs
+  -> catalogs verify and publish new heads
+
+Discover and run
+  synchronize catalog heads
+  -> download snapshots
+  -> verify provider and publisher events
+  -> merge into local search
+  -> download selected torrent through DHT/tracker/PEX/web seed
+  -> verify torrent, release, manifest, and permissions
+  -> run from isolated origin
+  -> seed according to user policy
+```
+
+An update is a new torrent and signed event referencing its predecessor. Clients verify publisher continuity and capability changes and support update, ignore, or pin-old-version choices.
+
+## 11. Security and abuse requirements
+
+Before storage, execution, indexing, or credit, verify:
+
+1. Torrent pieces and final roots.
+2. Canonical event IDs and signatures.
+3. Release-to-torrent metadata consistency.
+4. File, size, piece, and nesting limits.
+5. Safe relative paths without traversal, device paths, or escaping symlinks.
+6. Allowed MIME types and entrypoints.
+7. Replay, sequence, and oversized-message protections.
+8. Origin isolation and capability grants.
+
+The platform also needs spam admission, local blocks, signed labels, publisher history, reporting, storage quotas, and malware-scanner hooks. Delisting is not global deletion.
+
+Public torrent participation exposes peer-network metadata including IP addresses. Private messaging/groups require a separate threat model for encryption, membership, key rotation, delivery, and metadata protection and are outside the first release.
+
+## 12. Scaling model
+
+- Popular immutable content scales through consumer seeding.
+- Cold content depends on publishers, seedboxes, web seeds, or availability providers.
+- Feeds partition by publisher, topic, community, and time; there is no global event firehose.
+- Clients retain subscribed metadata and user-selected content, not the whole network.
+- Historical records move into immutable archives.
+- Mobile clients seed conservatively on suitable power and network conditions.
+- Search and expensive computation may be local or delegated to competing providers.
+
+## 13. Migration from the prototype
+
+Keep the Go daemon, local API boundary, Ed25519 implementation, TypeScript SDK, Wails gateway, local-first storage concepts, and Delphi UI as the seed for Aether Index.
+
+| Current prototype | Target |
+| --- | --- |
+| Custom capsule transfer | Standard BitTorrent backend |
+| In-memory `BTTrackerSwarm` | Mainline DHT, PEX, standard trackers |
+| `BT_ANNOUNCE` over GossipSub | Torrent-client announces |
+| Global `aether-global-v1` topic | Selected scoped feeds/providers |
+| First-seen usernames | Public-key identity with optional aliases |
+| JSON/base64 chunks | Torrent piece/resume storage |
+| Transfer leaderboard | Local availability metrics and signed labels |
+| Custom transport/NAT roadmap | Mature torrent engine and optional relays |
+
+Legacy code may remain behind compatibility boundaries while the new path is built, but new features must not depend on it.
+
+## 14. Decision summary
+
+Aether will be hybrid where the benefits are material. HTTP providers and web seeds may accelerate discovery and availability; professional services may provide moderation, search, relays, and compute. They remain replaceable, while clients verify canonical events and content.
+
+The promise is not that servers cease to exist. It is that users and publishers can change servers without losing identities, applications, subscriptions, or verifiable content history.

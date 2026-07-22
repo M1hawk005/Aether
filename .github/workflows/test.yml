@@ -1,4 +1,4 @@
-name: Aether CI Tests
+name: Tests
 
 on:
   push:
@@ -7,32 +7,48 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
-  test:
+  go:
     runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-
     steps:
     - uses: actions/checkout@v4
-    
-    - name: Use Node.js ${{ matrix.node-version }}
+    - uses: actions/setup-go@v5
+      with:
+        go-version-file: src/daemon-go/go.mod
+        cache-dependency-path: src/daemon-go/go.sum
+    - name: Test daemon
+      working-directory: src/daemon-go
+      run: go test ./...
+
+  sdk:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-        
-    - name: Install Root Dependencies
-      run: npm ci || npm install
-      
-    - name: Install SDK Dependencies
-      working-directory: ./packages/sdk
-      run: npm ci || npm install
-
-    - name: Run SDK Tests
-      working-directory: ./packages/sdk
+        node-version: 20
+        cache: npm
+        cache-dependency-path: packages/sdk/package-lock.json
+    - name: Install dependencies
+      working-directory: packages/sdk
+      run: npm ci
+    - name: Test SDK
+      working-directory: packages/sdk
       run: npm test
 
-    - name: Run Go Tests
-      run: npm run test:go || echo "No Go tests found"
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Use Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: npm
+        cache-dependency-path: aether-docs/package-lock.json
+    - name: Install dependencies
+      working-directory: aether-docs
+      run: npm ci
+    - name: Build documentation
+      working-directory: aether-docs
+      run: npm run build

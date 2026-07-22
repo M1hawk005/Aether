@@ -1,8 +1,25 @@
 # Aether Project Todo
 
-## V2 Architecture
-- [ ] **Replace WebRTC:** Rip out the WebRTC dependency in the native daemon and replace it with a lightweight, custom raw UDP/TCP + UPnP protocol (similar to BitTorrent's uTP) to make the daemon ultra-lean.
+The canonical prioritized backlog is maintained in [docs/Implementation_Backlog.md](docs/Implementation_Backlog.md). Tasks are grouped for a Notion Kanban using:
 
-## Decentralized Tracker App
-- [x] Implement mutable state / signed feeds for tracker swarm announcements.
-- [x] Build the Tracker UI (Web App interfacing with the Aether Daemon SDK).
+- **P0:** architecture or security blockers;
+- **P1:** required for the first useful Aether Index release;
+- **P2:** required for a credible public beta;
+- **P3:** scale, ecosystem, and advanced applications.
+
+## Current focus
+
+- [ ] Complete all P0 architecture contracts and security foundations.
+- [ ] Prove publish -> catalog -> search -> download -> verify -> isolated-run end to end.
+- [ ] Do not extend the custom tracker, global GossipSub blob transfer, or first-seen username system.
+
+## Completed prototype work retained for reference
+
+- [x] Go daemon and local HTTP boundary.
+- [x] Ed25519 identity/signature prototype.
+- [x] TypeScript SDK boundary.
+- [x] Wails desktop gateway shell.
+- [x] Delphi tracker/catalog proof-of-concept UI.
+- [x] Local content publication and retrieval prototype.
+
+These completed items prove product concepts but do not imply production readiness or conformance with the target architecture.
