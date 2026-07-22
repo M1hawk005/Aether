@@ -3,24 +3,30 @@ sidebar_position: 2
 title: Core Concepts
 ---
 
-# Theoretical Concepts
+# Core Concepts
 
-To build safely on Aether, it is important to understand the underlying mathematics and cryptography.
+Aether combines independently verifiable records with existing content-distribution infrastructure.
 
-## Distributed Hash Table (DHT)
-Aether uses a **Kademlia DHT** (via Libp2p) for peer discovery.
-Instead of routing by IP addresses, nodes are routed by the hash of their Public Key (Node ID). 
+## Identity and signed events
 
-When you publish a capsule, Aether finds the nodes mathematically closest to you (using XOR distance) and connects to them to seed the data.
+An Ed25519 public key is the canonical identity. Profiles, releases, listings, labels, and later social activity form per-author signed event chains with sequence numbers and predecessor links. Handles are optional aliases, not global consensus identifiers.
 
-## Cryptography & Data Integrity
-Every piece of data published to Aether is wrapped in a **Capsule**.
-1. **Payload:** The raw data, compressed losslessly using **Brotli**.
-2. **Manifest:** A JSON index of the payload chunks, hashed using **SHA-256**.
-3. **Envelope:** A signed object proving ownership, signed using an **Ed25519** Private Key.
+## Immutable content
 
-Because every layer is cryptographically signed, the data cannot be tampered with by intermediary nodes.
+Static applications, media, catalog snapshots, and archives are standard BitTorrent v2 or hybrid torrents. Torrent hashes verify downloaded bytes; the Aether event signature separately verifies which publisher endorsed those bytes.
 
-## Decentralized Identifiers (DIDs)
-Usernames on Aether are mapped to Ed25519 Public Keys via **Epochs**. 
-This prevents identity theft: even if a username is transferred to a new user (a new Epoch), historical posts retain the cryptographic signature of the original owner.
+## Mainline BitTorrent DHT
+
+The Mainline DHT locates peers for known torrent infohashes. It is not the repository's legacy libp2p DHT and is not a keyword-search or social database. A compatible torrent engine joins the existing BitTorrent network.
+
+## Catalogs and local search
+
+Independent catalog providers distribute signed listing events and torrent-backed snapshots. Users subscribe to several providers; the local daemon verifies, deduplicates, filters, and indexes accepted records for offline search.
+
+## Hybrid providers
+
+Replaceable services can improve search, ranking, moderation, availability, relays, or computation. They may be centralized operationally without becoming canonical owners of identity or content.
+
+## Application isolation
+
+Downloaded web applications are untrusted. Each verified release runs from an isolated origin and receives only explicit daemon capabilities. Private keys remain in the daemon, and sensitive signing or filesystem actions require daemon-controlled consent.

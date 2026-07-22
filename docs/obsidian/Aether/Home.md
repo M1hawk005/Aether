@@ -1,27 +1,20 @@
-# Aether Network Documentation
+# Aether Documentation
 
-Welcome to the internal documentation vault for the **Aether Network**. This vault is designed to provide deep, modular, and technically rigorous explanations of every component within the Aether ecosystem.
+Aether is an open, local-first application and media distribution layer built from signed records, interoperable BitTorrent content delivery, and replaceable hybrid service providers.
 
-Aether is a decentralized, peer-to-peer file sharing and communication network built around the philosophy of a **neutral base routing layer**. 
+The canonical system decision is [Aether Architectural Reference](../../Aether_Architecture.md). Historical documents in `docs/archive/` explain earlier thinking but are not current decisions.
 
 ## Modules
 
-Navigate through the architectural modules below:
+- [**Daemon**](./Daemon.md) — trusted local boundary for identity, validation, catalog sync, torrents, policy, and the application runtime.
+- [**DHT**](./DHT.md) — explains the distinction between Mainline BitTorrent DHT and the legacy libp2p prototype.
+- [**Network**](./Network.md) — content, record, and provider planes in the hybrid architecture.
+- [**Client SDK**](./SDK.md) — current TypeScript client boundary; APIs will evolve during migration.
+- [**Desktop Gateway**](./Gateway.md) — Wails shell and future isolated application runtime.
+- [**CLI Tools**](./CLI.md) — current prototype commands.
+- [**Project Roadmap**](./Roadmap.md) — migration phases and release gates.
+- [**Implementation Backlog**](../../Implementation_Backlog.md) — P0–P3 task list for delivery planning.
 
-- [**Daemon**](./Daemon.md) 
-  The core process (`src/daemon.js`). Explains the HTTP REST API, local storage chunking mechanisms, and the orchestration of network sub-systems.
-- [**DHT (Distributed Hash Table)**](./DHT.md) 
-  The routing engine (`src/dht/kademlia.js`). Explains Kademlia XOR metrics, routing tables, k-buckets, and network lookup RPCs.
-- [**Network & WebRTC**](./Network.md)
-  The transport layer (`src/network/webrtc.js`). Details the use of WebRTC DataChannels for high-throughput P2P transfers, fallback WebSockets for signaling, and mDNS zero-configuration discovery on Local Area Networks.
-- [**Client SDK**](./SDK.md) 
-  The JavaScript/TypeScript library (`packages/sdk`). Documentation for the `AetherClient` used by third-party applications to interact with a local Aether daemon.
-- [**Desktop Gateway**](./Gateway.md) 
-  The user interface (`aether-gateway`). Explains the Wails application that wraps a local daemon with a React/Vite frontend to provide the graphical experience.
-- [**CLI Tools**](./CLI.md) 
-  The command-line interface (`src/cli/index.js`). Details headless usage, identity generation, and direct publishing commands.
-- [**Project Roadmap**](./Roadmap.md)
-  A high-level overview of everything implemented so far and the strategic path forward for the network.
+## Current versus target
 
----
-*Generated for architectural review and community onboarding.*
+The repository currently runs a Go/libp2p capsule prototype with a global GossipSub topic and custom tracker-like messages. The target uses Mainline BitTorrent infrastructure for immutable blobs and selected signed feeds/providers for mutable records. New features should target the accepted architecture rather than deepen the legacy transport.

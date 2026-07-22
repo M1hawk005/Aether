@@ -1,27 +1,36 @@
-# Distributed Hash Table (`src/dht/kademlia.js`)
-
-The routing engine of the Aether Network is a bespoke implementation of the **Kademlia Distributed Hash Table (DHT)** algorithm. It governs how nodes locate each other and where data is stored across the decentralized swarm.
+# Distributed Hash Tables
 
 [Back to Home](./Home.md)
 
-## Node IDs and XOR Distance
+The target architecture primarily uses the **BitTorrent Mainline DHT** through a compatible torrent backend. The repository's existing go-libp2p Kademlia DHT is a different network with different messages and peers; participating in it does not join Mainline DHT.
 
-- **NodeID:** Upon first boot, the [Daemon](./Daemon.md) generates an Ed25519 keypair. The SHA-256 hash of the public key acts as the 160-bit NodeID.
-- **XOR Metric:** The distance between any two nodes, or a node and a piece of data (CapsuleID), is calculated using the bitwise XOR operator. 
-- In Kademlia, distance is geometric. The closer the XOR result is to zero, the "closer" the two entities are.
+## Mainline DHT responsibilities
 
-## Routing Table & K-Buckets
+Mainline DHT stores short-lived peer locations associated with known torrent infohashes. Torrent clients use `get_peers` to find peers and `announce_peer` to advertise participation.
 
-A node cannot memorize the IP address of every participant in the network. Instead, it maintains a routing table organized into **k-buckets**.
-- Each k-bucket covers a specific segment of the XOR distance space.
-- A k-bucket stores a maximum of `k` contacts (in Aether, `k=20`).
-- This mathematical structure ensures that any node can locate any piece of data in $O(\log n)$ hops, where $n$ is the total number of network peers.
+It is appropriate for:
 
-## Remote Procedure Calls (RPCs)
+- locating peers for a known torrent;
+- trackerless torrent operation;
+- small interoperable extensions implemented by the selected backend.
 
-The DHT communicates asynchronously via UDP (or simulated UDP over WebSockets/WebRTC) using four standard Kademlia RPCs:
+It is not appropriate for:
 
-1. **PING:** Verifies that a peer in a k-bucket is still alive.
-2. **STORE:** Instructs a peer to store a `<Key, Value>` pair (e.g., `CapsuleID -> ChunkData`).
-3. **FIND_NODE:** Requests a list of the `k` closest peers to a given NodeID. Used heavily to bootstrap the routing table.
-4. **FIND_VALUE:** Requests a specific `CapsuleID`. If the receiving peer has the data, it returns it; otherwise, it returns the `k` closest peers to the ID, allowing the search to iterate closer to the target.
+- keyword search;
+- complete torrent metadata catalogs;
+- social timelines or comments;
+- global usernames;
+- recommendation indexes;
+- durable large records.
+
+## Mutable pointers
+
+BEP 44-style signed mutable items and BEP 46-style update pointers may identify the current torrent for a catalog or publisher feed. Values remain small; catalog data itself is stored in torrents. Publishers or mirrors must republish pointers because DHT values are not permanent storage.
+
+## Bootstrap
+
+The embedded torrent engine retains its routing table and uses multiple ordinary BitTorrent bootstrap mechanisms. Bootstrap nodes introduce a client to peers but do not become canonical providers.
+
+## Legacy libp2p use
+
+The current global libp2p DHT/GossipSub implementation is migration-era code. libp2p may remain later for narrowly scoped control, rendezvous, private, or real-time functions only when BitTorrent and provider APIs do not meet the requirement.

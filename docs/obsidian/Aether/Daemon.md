@@ -1,46 +1,46 @@
-# Core Daemon (`src/daemon.js`)
-
-The Daemon is the backbone of an Aether node. It is a long-running background process that orchestrates the internal sub-systems of the network. It does not contain any user interface; instead, it exposes a local HTTP REST API for clients (like the [Gateway](./Gateway.md) or [CLI](./CLI.md)) to interact with.
+# Core Daemon (`src/daemon-go`)
 
 [Back to Home](./Home.md)
 
-## Architecture & Neutrality
+The daemon is Aether's trusted local boundary. It exposes a versioned API to the Wails gateway, SDK, CLI, and isolated Aether applications. It is not merely a neutral router: it must verify content, enforce local security and storage policy, and mediate privileged actions.
 
-In accordance with Aether's [Base Layer Philosophy](./Home.md), the daemon is designed as a **neutral routing pipe**. 
-- It **does not** perform any content moderation. 
-- It **does not** issue rejection receipts.
-- Its primary responsibility is the ingress, validation, chunking, storage, and egress of data blobs (capsules).
+## Target services
 
-## Key Sub-Systems
+1. **Identity:** securely load and use Ed25519 keys; applications never receive raw private keys.
+2. **Events:** canonicalize, sign, verify, order, deduplicate, and store Aether events.
+3. **Catalog:** synchronize selected feeds and maintain local full-text search.
+4. **Torrent:** create, add, stream, resume, and seed standard torrents through a backend interface.
+5. **Policy:** apply labels, local blocks, quotas, retention, bandwidth, and provider choices.
+6. **Runtime:** serve verified app bundles from isolated origins and enforce capabilities.
+7. **Providers:** communicate with catalog, label, search, relay, availability, and compute services.
 
-When the daemon starts, it initializes several dependencies in a strict order:
-1. **Local Storage:** The local `.aether/` directory is mapped for caching blobs.
-2. **Keypair Identity:** An Ed25519 cryptographic keypair is loaded from disk.
-3. **Kademlia DHT:** The routing table is initialized using the node's NodeID (hash of the public key). See [DHT](./DHT.md).
-4. **WebRTC Swarm:** The P2P transport layer is started, listening for signaling and LAN discovery. See [Network](./Network.md).
+## Startup sequence
 
-## Local REST API Endpoints
+```text
+open secure identity and database
+  -> load policy and capability grants
+  -> initialize torrent backend and Mainline DHT
+  -> resume retained torrents
+  -> start authenticated local API
+  -> synchronize selected feeds
+  -> expose gateway and isolated app origins
+```
 
-The daemon exposes a local HTTP server (default port `5000`) for the [SDK](./SDK.md) to consume.
+## API direction
 
-### Publishing Data
-`POST /api/publish`
-- Accepts a `payload` (base64 or string) and an `alias/username`.
-- **Chunking Logic:** The daemon splits large files into highly available 256KB chunks. 
-- Each chunk is hashed (SHA-256) to produce a `CapsuleID`.
-- The daemon instructs the DHT to announce these chunks to the closest nodes.
+The legacy capsule endpoints remain prototype interfaces during migration. The v1 target API should be resource-oriented and versioned around:
 
-### Fetching Data
-`GET /api/fetch/:capsuleId`
-1. Checks the local `.aether` cache.
-2. If missing, queries the [DHT](./DHT.md) for peers holding the capsule.
-3. Instructs the [Network](./Network.md) layer to initiate a WebRTC transfer to download the chunk.
-4. Validates the hash against the chunk content to ensure data integrity.
+- `/api/v1/identity` and mediated signing;
+- `/api/v1/events`;
+- `/api/v1/feeds` and `/api/v1/catalog/search`;
+- `/api/v1/torrents`;
+- `/api/v1/apps`, releases, and updates;
+- `/api/v1/permissions`;
+- `/api/v1/storage` and seeding policy;
+- `/api/v1/providers`.
 
-### Identity Management
-`POST /api/claim-username`
-`POST /api/release-username`
-- Broadcasts a cryptographic proof linking the Ed25519 public key to a human-readable username across the DHT.
+Localhost is not an authentication mechanism. The production API must prevent arbitrary websites and unrelated local processes from invoking privileged actions.
 
-> [!TIP]
-> The daemon binds to `0.0.0.0` to ensure it is accessible locally and across the LAN, which is critical for [mDNS discovery](./Network.md).
+## Migration note
+
+Current code still contains libp2p/GossipSub message routing, custom capsule chunks, first-seen aliases, an in-memory tracker table, and unverified delivery comments. New features should be implemented behind target interfaces so those paths can be removed without another rewrite.
