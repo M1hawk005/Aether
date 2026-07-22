@@ -1,5 +1,8 @@
 # Aether Network: Detailed Testing Walkthrough Plan
 
+> [!WARNING]
+> This walkthrough targets a superseded Node/WebRTC prototype and is preserved only as historical test context. It is not a validation plan for the hybrid BitTorrent architecture. The replacement end-to-end acceptance flow is defined in [Implementation Backlog](./Implementation_Backlog.md).
+
 This guide outlines exactly how to test the Aether Network as a neutral, decentralized file-sharing platform across two devices on the same Local Area Network (LAN). 
 
 Because we integrated **mDNS (Zero-Configuration Discovery)**, you no longer need to worry about manually typing IP addresses or editing `network.json`. The nodes will find each other automatically.

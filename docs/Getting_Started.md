@@ -1,5 +1,8 @@
 # Aether Protocol: Getting Started & Application Guide
 
+> [!WARNING]
+> This guide documents the runnable legacy capsule/libp2p prototype. It is retained for development and migration testing; it does not describe the accepted hybrid BitTorrent architecture. See [Aether Architectural Reference](./Aether_Architecture.md) and [Implementation Backlog](./Implementation_Backlog.md) before building new features.
+
 Welcome to the Aether Protocol. This guide provides meticulous, step-by-step instructions for setting up the development environment, running the decentralized network locally, and utilizing the Aether Gateway UI.
 
 ---

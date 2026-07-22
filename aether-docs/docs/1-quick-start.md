@@ -5,6 +5,8 @@ title: Quick Start
 
 # Quick Start Guide
 
+> **Migration notice:** This page exercises the legacy capsule API. The accepted target architecture uses signed events, standard torrents, catalog providers, and an isolated application runtime. Do not treat these calls as the stable v1 API.
+
 Welcome to the Aether Protocol! This guide will get you building decentralized applications in minutes.
 
 ## 1. Prerequisites

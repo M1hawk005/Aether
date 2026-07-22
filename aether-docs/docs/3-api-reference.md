@@ -5,6 +5,8 @@ title: API Reference
 
 # API Reference
 
+> **Migration notice:** These endpoints describe the legacy capsule prototype. The target v1 API will be versioned around identities, events, feeds, catalogs, torrents, applications, permissions, storage, and providers.
+
 The `AetherSDK` class provides simple, promise-based methods to interact with the Aether Daemon.
 
 ## `publish(publisher, payload, options)`
