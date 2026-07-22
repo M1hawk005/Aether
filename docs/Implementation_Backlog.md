@@ -1,3 +1,8 @@
+---
+title: Implementation Backlog
+sidebar_position: 2
+---
+
 # Aether Implementation Backlog
 
 This is the canonical backlog for the hybrid Aether architecture. It is formatted for copying into a Notion Kanban. Recommended Notion properties are `ID`, `Task`, `Priority`, `Status`, `Area`, `Milestone`, `Depends on`, and `Acceptance criteria`.

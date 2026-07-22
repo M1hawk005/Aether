@@ -1,3 +1,9 @@
+---
+title: Architecture
+slug: /
+sidebar_position: 1
+---
+
 # Aether Architectural Reference
 
 **Status:** Accepted target architecture

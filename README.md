@@ -26,8 +26,8 @@ See the [architectural reference](docs/Aether_Architecture.md) and [implementati
 - **`packages/sdk/`**: TypeScript client SDK for applications communicating with the local daemon.
 - **`apps/delphi/`**: Existing tracker/catalog proof of concept; intended to evolve into Aether Index.
 - **`aether-gateway/`**: Wails desktop gateway and future secure application runtime.
-- **`docs/`**: Canonical architecture, migration plan, and developer documentation.
-- **`docs/archive/`**: Historical proposals retained for context; these are not current decisions.
+- **`docs/`**: Canonical architecture, implementation backlog, and developer guide.
+- **`aether-docs/`**: Docusaurus site that renders the canonical files from `docs/`.
 
 ## Running the current prototype
 
