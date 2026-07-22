@@ -1,6 +1,7 @@
 .aether/
 node_modules/
 dist/
+coverage/
 *.log
 
 .aether-*
@@ -8,3 +9,5 @@ dist/
 bin/
 *.exe
 .gocache/
+aether-docs/.docusaurus/
+aether-docs/build/

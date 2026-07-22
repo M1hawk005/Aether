@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<coverage generated="1781568838217" clover="3.2.0">
-  <project timestamp="1781568838217" name="All files">
+<coverage generated="1784680001009" clover="3.2.0">
+  <project timestamp="1784680001009" name="All files">
     <metrics statements="77" coveredstatements="77" conditionals="38" coveredconditionals="38" methods="14" coveredmethods="14" elements="129" coveredelements="129" complexity="0" loc="77" ncloc="77" packages="1" files="1" classes="1"/>
     <file name="client.ts" path="X:\Projects\Aether\packages\sdk\src\client.ts">
       <metrics statements="77" coveredstatements="77" conditionals="38" coveredconditionals="38" methods="14" coveredmethods="14"/>
